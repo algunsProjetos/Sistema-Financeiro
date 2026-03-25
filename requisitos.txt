@@ -1,0 +1,13 @@
+PROJETO EM GRUPO – APLICAÇÃO PRÁTICA DE ALGORITMOS EM
+PYTHON (P2)
+
+software interativo que resolva algum problema usando oq ensinou no lab e aula
+
+precisa de uma interfae: Tkinter, PyQt, Kivy ou outra
+biblioteca compatível com Python
+
+PRECISA: 
+✔ Comandos de entrada e saída –
+✔ Estruturas de repetição – 
+✔ Estruturas de decisão – 
+✔ Vetores e matrizes –
