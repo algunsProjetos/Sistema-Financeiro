@@ -1,80 +1,104 @@
-"""
-Nossa ideia foi elaborar um sistema funional que receba o extrato do usuario (limitado a csv)
-mostra no terminal (futuramente em uma interface) 
-limpa 
-soma valores movimentados 
-printa total
-separa serviços essenciais, faturas/parcelas, luxos/hobbies (levantamento geral de gastos)
-calculos necessarios em porcetagem de cada serviço 
-traduz em grafico de pizza
-
-atualizações futuras:
-1-usuario podera informar gastos add(como pg em dinheiro) 
-e em qual serviço se encontra, alterando o valor dos calculos simultaneamente.
-2-intarface que funcione fora do terminal. 
-pessoal: separar por pastas, limpar codigo add funções.
-"""
 import pandas as pd #necessario para manipulação do csv
 import os #limpar terminal eventualmente 
+os.system("cls") 
 
-os.system("cls") #limpar terminal
-df_Extrato=pd.read_csv("extrato/teste_extrato.csv", sep=";", skiprows=4,encoding="UTF-8") #leia o extrato separado por ';' pule as 4 primeiras linhas
+#recebe extrato
+df_Extrato=pd.read_csv("extrato/extrato.csv", sep=";", skiprows=4,encoding="UTF-8")
+print("Extrato deste mes: \n")
+print(df_Extrato.to_string(index=False)) #sem indices
+
+#valores foram enviados como str, sendo necessario float para calculos
+def tranformar_string_float(coluna):
+    df_Extrato[coluna]=df_Extrato[coluna].str.replace('.','').str.replace(',','.').astype(float)
+
+
+valor_float=tranformar_string_float('Valor') #de string para float
+saldo_float=tranformar_string_float('Saldo') #string para float
+
+#com base nesse dicionario nos vamos filtrar cada gasto
+categorias = {
+    "fixos": [
+        "cpfl", "sabesp", "internet", "tim", "aluguel","UNIV"
+    ],
+    
+    "saude": [
+        "academia"
+    ],
+    
+    "lazer": [
+        "spotify", "steam", "netflix", "jogos"
+    ],
+    
+    "compras": [
+        "shpp", "marketplace", "Pagseguro"
+    ],
+    
+    "investimentos": [
+        "porquinho", "aplicacao"
+    ],
+    
+    "transferencias": [
+        "marcio", "elisabete"
+    ],
+    "empresa":[
+        "mircele", "contador"
+    ],
+}
 """
-Pq usar format ou dayfirst=True? o pandas avisa q a data esta em portugues, mas ele 
-interpreta da forma americana. O mais correto é passar o formato(format="%d/%m/%Y") ou 
-apenas dizer que o dia vem primeiro pois estamos no brasil
-obs: format foi encontrado aqui: https://pandas.pydata.org/docs/reference/api/pandas.
-to_datetime.html
+inicialemnte seria necessario repetir em cada categoria esse msm codigo 
+para tranformar em uma planilha, por isso optei pela função: 
+obs: juntar_Fixos="|".join(categorias["fixos"])
+gastos_Fixos=df_Extrato[df_Extrato['Descrição'].str.contains(juntar_Fixos, case=False)]
+print(gastos_Fixos)
 """
-#convertendo string de data para datatime
-df_Extrato["Data Lançamento"]=pd.to_datetime(df_Extrato["Data Lançamento"],format="%d/%m/%Y")
+
+#com base no dicionario nos criamos df de cada categoria
+def categorias_para_tabela(filtro):
+    juntar_filtro="|".join(categorias[filtro])
+    dataframe_gastos=df_Extrato[df_Extrato['Descrição'].str.contains(juntar_filtro, case=False)]
+    return dataframe_gastos #apos exe retorne o dataframe 
+
+print("\nSeus gastos fixos: \n")
+df_fixos=categorias_para_tabela('fixos')
+print(df_fixos)
+
+print("\nSeus gastos em compras online: \n")
+df_compras=categorias_para_tabela('compras')
+print(df_compras)
+
+print("\n Suas Transferencias: \n")
+df_transferencias=categorias_para_tabela('transferencias')
+print(df_transferencias)
+
 """
-Como converter valor str do CSV para float?
-Resposta encontrada aqui: https://pt.stackoverflow.com/questions/446803/
-convers%C3%A3o-de-object-para-float
-e aqui:
-https://cursos.alura.com.br/forum/topico-duvida-como-
-converter-coluna-object-exemplo-r-2-500-00-em-ns-float-em-python-290333
+Começamos o calulo. Meu foco é separar cada tipo de gasto 
+calcular sua porcentagem e filtrar entradas e saidas para analise
 """
-#converter para valor float
-df_Extrato['Valor'] = df_Extrato["Valor"].str.replace('.','').str.replace(',','.').astype(float)
-df_Extrato['Saldo'] = df_Extrato["Saldo"].str.replace('.','').str.replace(',','.').astype(float)
-print(df_Extrato)
-#quanto movimentei ao longo do mes (inclui saidas e entradas) 
-movimentacao_Valor=df_Extrato["Valor"].sum()
-print(f"Valores movimentados: R$ {movimentacao_Valor:.2f}")
-#dessas movimentações, quanto foram entradas: #perguntar para o professor
+print("\n-------------------")
+print(" Suas Movimentações ")
+print("-------------------\n")
+
+#verificar oq foi pago e oq foi recebido
+pago = abs(df_Extrato[df_Extrato['Valor'] < 0]['Valor'].sum())
+print(f"Total de Pagamentos R${pago:.2f}")
 entrada = df_Extrato[df_Extrato['Valor'] > 0]['Valor'].sum()
-print(f"Entradas R$ {entrada:.2f}")
-#e saidas? #perguntar para o professor
-saida = df_Extrato[df_Extrato['Valor'] < 0]['Valor'].sum()
-print(f"Saida R$ {saida:.2f}")
+print(f"\nTotal de Entradas R$ {entrada:.2f}")
 
+movimentacao=df_Extrato['Valor'].sum()
+print(f"\nValor final Movimentado R$ {movimentacao:.2f}")
 
+print("\n-------------------")
+print("Seus gatos em % ")
+print("-------------------")
 
-#e quanto foi saida
+def porcentagem_gasto(tabela):
+    formula_porcentagem=((abs(tabela['Valor'].sum()))/pago)*100
+    return formula_porcentagem
 
-#localiza meu saldo final
-saldo_Final_Mes=df_Extrato.loc[0,'Saldo']
+porcentagem_gastos_fixos=porcentagem_gasto(df_fixos)
+porcentagem_gasto_compras=porcentagem_gasto(df_compras)
+porcentagem_gasto_transferencias=porcentagem_gasto(df_transferencias)
 
-"""
-https://www.youtube.com/watch?v=rHxy-AxwsTU
-SHIFT+\=|
-"""
-
-#NEXT: separar essenciais e outros
-essenciais=df_Extrato[df_Extrato['Descrição'].str.contains('cpfl|sabesp|coracao|internet|desktop|dae|uber|casolina|mercado|vero|telefonica|energia|agua|esgoto', case=False)]
-total_essencial=essenciais['Valor'].sum()
-print(essenciais)
-print(f"Valores Essenciais movimentados: R$ {total_essencial:.2f}")
-
-#calcular porcentagem do que é essencial.
-"""Qual a porcentagem dos meu pagamentos essenciais em relação aos pagamentos da conta? """
-porcentagem_Essencial=(total_essencial/saida)*100
-print(f"Representa cerca de {porcentagem_Essencial:.2f}%")
-
-#nao esta certo, mas a ideia é essa...
-if total_essencial > movimentacao_Valor:
-    print("Gastando mais que ganha")
-else:
-    print("Esta controlado")
+print(f"\nGastos fixos representam {porcentagem_gastos_fixos:.2f}%")
+print(f"\nGastos em Compras-on representam {porcentagem_gasto_compras:.2f}%")
+print(f"\nGastos em Transferencias {porcentagem_gasto_transferencias:.2f}%")
